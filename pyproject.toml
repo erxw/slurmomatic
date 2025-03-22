@@ -1,19 +1,18 @@
 [project]
-name = "slurmify"
+name = "autoslurm"
 version = "0.1.0"
 description = "custom decorator to turn any function slurm-deployable. Can submit multiple jobs and multiple job_arrays"
 readme = "README.md"
 authors = [
-    { name = "eric wang", email = "eric.wang@pitontx.com" }
+    { name = "eric wang", email = "ehjwang@gmail.com" }
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "loguru>=0.7.3",
     "submitit>=1.5.2",
 ]
 
 [project.scripts]
-slurmify = "slurmify:main"
+autoslurm = "autoslurm:main"
 
 [build-system]
 requires = ["hatchling"]

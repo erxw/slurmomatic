@@ -1,17 +1,17 @@
-# autoslurm
+# Slurmomatic
 
 A lightweight Python decorator to conditionally submit functions as SLURM jobs (or job arrays), falling back to local execution when SLURM is not available.
 
 ## 🚀 Key Features
 
-- 📦 **Drop-in simple**: Decorate any function with `@autoslurm(...)`.
+- 📦 **Drop-in simple**: Decorate any function with `@slurmify(...)`.
 - 🔍 **Auto-detects SLURM**: Will submit jobs via SLURM if available, otherwise runs locally.
 - ⚙️ **Unified interface**: Same code works on your laptop or cluster — no changes needed.
 - 🧠 **Smart job control**: Supports both individual job submission and SLURM job arrays.
 
 ## 🔧 Requirements
 
-- Python 3.8+
+- Python 3.10+
 - [`submitit`](https://github.com/facebookincubator/submitit)
 
 ---
@@ -21,7 +21,7 @@ A lightweight Python decorator to conditionally submit functions as SLURM jobs (
 ### Step 1: Import
 
 ```python
-from autoslurm import autoslurm, batch
+from slurmomatic import slurmify, batch
 ```
 ### Step 2: Decorate your function
 Each decorated function must accept a use_slurm: bool argument.
@@ -31,9 +31,9 @@ Each decorated function must accept a use_slurm: bool argument.
 # ✅ Example 1: Submitting a SLURM Job Array
 
 ```python
-from autoslurm import autoslurm
+from slurmomatic import slurmify
 
-@autoslurm(slurm_array_parallelism=True, timeout_min=20)
+@slurmify(slurm_array_parallelism=True, timeout_min=20)
 def train(a: int, b: int, use_slurm: bool = False):
     print(f"Training with a={a}, b={b}")
 
@@ -46,9 +46,9 @@ train([1, 2, 3, 4, 5], [10, 20, 30, 40, 50], use_slurm=True)
 # ✅ Example 2: Submitting Multiple Individual Jobs
 
 ```python
-from autoslurm import autoslurm
+from slurmomatic import slurmify
 
-@autoslurm(timeout_min=10)
+@slurmify(timeout_min=10)
 def run_experiment(seed: int, use_slurm: bool = False):
     print(f"Running experiment with seed={seed}")
 
@@ -61,9 +61,9 @@ Each call submits its own SLURM job (or runs locally).
 
 # ✅ Example 3: Submitting Multiple Batches with Job Arrays
 ```python
-from autoslurm import autoslurm, batch
+from slurmomatic import slurmify, batch
 
-@autoslurm(slurm_array_parallelism=10, timeout_min=30)
+@slurmify(slurm_array_parallelism=10, timeout_min=30)
 def evaluate(x: int, y: int, use_slurm: bool = False):
     print(f"Evaluating with x={x}, y={y}")
     # Prepare large input lists
@@ -79,10 +79,10 @@ This submits 5 SLURM job arrays, each with 200 jobs.
 
 ---
 
-# 📦 @autoslurm(...) Parameters
+# 📦 @slurmify(...) Parameters
 You can pass any SLURM submitit parameters directly to the decorator:
 ```python
-@autoslurm(timeout_min=30, cpus_per_task=4, gpus_per_node=1, partition="gpu")
+@slurmify(timeout_min=30, cpus_per_task=4, gpus_per_node=1, partition="gpu")
 ```
 
 Special key:
@@ -94,7 +94,7 @@ slurm_array_parallelism=10 → Triggers job array mode.
 # 🧰 batch(batch_size: int, *args)
 Utility to chunk long input lists into mini-batches.
 ```python
-from autoslurm import batch
+from slurmomatic import batch
 
 for a_batch, b_batch in batch(100, list_a, list_b):
     train(a_batch, b_batch, use_slurm=True)

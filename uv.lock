@@ -2,7 +2,7 @@ version = 1
 requires-python = ">=3.10"
 
 [[package]]
-name = "autoslurm"
+name = "slurmify"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
@@ -11,7 +11,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "autoslurm" },
+    { name = "slurmify" },
     { name = "pdoc" },
     { name = "pytest" },
 ]
@@ -21,7 +21,7 @@ requires-dist = [{ name = "submitit", specifier = ">=1.5.2" }]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "autoslurm", editable = "." },
+    { name = "slurmify", editable = "." },
     { name = "pdoc", specifier = ">=15.0.1" },
     { name = "pytest", specifier = ">=8.3.5" },
 ]

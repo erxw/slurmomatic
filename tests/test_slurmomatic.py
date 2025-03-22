@@ -2,18 +2,18 @@ import sys
 import os
 import pytest
 
-# Allow importing autoslurm from parent directory
-from autoslurm.utils import batch
-from autoslurm.core import is_slurm_available, autoslurm
+# Allow importing slurmify from parent directory
+from slurmomatic.utils import batch
+from slurmomatic.core import is_slurm_available, slurmify
 
 # ----------------------------------------------------
 # Dummy decorated functions
 # ----------------------------------------------------
-@autoslurm(folder="test_logs")
+@slurmify(folder="test_logs")
 def dummy_job(x, y, use_slurm=False):
     return x + y
 
-@autoslurm(folder="test_logs", slurm_array_parallelism=True)
+@slurmify(folder="test_logs", slurm_array_parallelism=True)
 def dummy_job_array(x, y, use_slurm=False):
     return x * y
 
@@ -58,7 +58,7 @@ def test_is_slurm_available_returns_bool():
 
 
 # ----------------------------------------------------
-# Tests for `autoslurm` decorated functions
+# Tests for `slurmify` decorated functions
 # ----------------------------------------------------
 def test_dummy_job_result_value():
     job = dummy_job(2, 3, use_slurm=False)

@@ -18,7 +18,7 @@ def is_slurm_available() -> bool:
     return "SLURM_JOB_ID" in os.environ or os.system("sinfo > /dev/null 2>&1") == 0
 
 
-def autoslurm(**slurm_kwargs):
+def slurmify(**slurm_kwargs):
     """
         Args:
             **slurm_kwargs: Additional keyword arguments to configure the SLURM job submission.
@@ -55,7 +55,7 @@ def autoslurm(**slurm_kwargs):
             executor_label = "SLURM" if is_remote else "local"
             folder = slurm_kwargs.get("folder", f"{executor_label.lower()}_logs")
 
-            print(f"[autoslurm] Using {executor_label}Executor. Logs in '{folder}'")
+            print(f"[slurmify] Using {executor_label}Executor. Logs in '{folder}'")
 
             executor = executor_class(folder=folder)
             executor.update_parameters(**slurm_kwargs)
@@ -65,18 +65,18 @@ def autoslurm(**slurm_kwargs):
                 arg_lists = [bound_args.arguments[k] for k in arg_names]
 
                 if not all(isinstance(arg, (list, tuple)) for arg in arg_lists):
-                    raise ValueError("[autoslurm] All inputs (except 'use_slurm') must be lists/tuples when slurm_array_parallelism is used.")
+                    raise ValueError("[slurmify] All inputs (except 'use_slurm') must be lists/tuples when slurm_array_parallelism is used.")
 
                 if not all(len(arg_lists[0]) == len(arg) for arg in arg_lists):
-                    raise ValueError("[autoslurm] All input lists must have the same length.")
+                    raise ValueError("[slurmify] All input lists must have the same length.")
 
                 jobs = executor.map_array(fn, *arg_lists)
-                print(f"[autoslurm] Submitted job array with job ids: {[job.job_id for job in jobs]}")
+                print(f"[slurmify] Submitted job array with job ids: {[job.job_id for job in jobs]}")
                 return jobs
 
             else:
                 job = executor.submit(fn, *args, **kwargs)
-                print(f"[autoslurm] Submitted job with id {job.job_id}")
+                print(f"[slurmify] Submitted job with id {job.job_id}")
                 return job
 
         return wrapper

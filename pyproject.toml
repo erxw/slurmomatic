@@ -1,5 +1,5 @@
 [project]
-name = "slurmify"
+name = "slurmomatic"
 version = "0.1.0"
 description = "custom decorator to turn any function slurm-deployable. Can submit multiple jobs and multiple job_arrays"
 readme = "README.md"
@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-slurmify = "slurmify:main"
+slurmomatic = "slurmomatic:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -22,11 +22,7 @@ build-backend = "hatchling.build"
 dev = [
     "pytest>=8.3.5",
     "pdoc>=15.0.1",
-    "slurmify",
 ]
-
-[tool.uv.sources]
-slurmify = { workspace = true }
 
 [tool.pytest.ini_options]
 pythonpath = "src"

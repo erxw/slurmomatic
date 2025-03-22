@@ -4,7 +4,6 @@ from functools import wraps
 from typing import Callable, Any
 
 import submitit
-from loguru import logger
 
 
 def is_slurm_available() -> bool:
@@ -56,7 +55,7 @@ def slurmify(**slurm_kwargs):
             executor_label = "SLURM" if is_remote else "local"
             folder = slurm_kwargs.get("folder", f"{executor_label.lower()}_logs")
 
-            logger.info(f"[slurmify] Using {executor_label}Executor. Logs in '{folder}'")
+            print(f"[slurmify] Using {executor_label}Executor. Logs in '{folder}'")
 
             executor = executor_class(folder=folder)
             executor.update_parameters(**slurm_kwargs)
@@ -72,12 +71,12 @@ def slurmify(**slurm_kwargs):
                     raise ValueError("[slurmify] All input lists must have the same length.")
 
                 jobs = executor.map_array(fn, *arg_lists)
-                logger.info(f"[slurmify] Submitted job array with job ids: {[job.job_id for job in jobs]}")
+                print(f"[slurmify] Submitted job array with job ids: {[job.job_id for job in jobs]}")
                 return jobs
 
             else:
                 job = executor.submit(fn, *args, **kwargs)
-                logger.info(f"[slurmify] Submitted job with id {job.job_id}")
+                print(f"[slurmify] Submitted job with id {job.job_id}")
                 return job
 
         return wrapper

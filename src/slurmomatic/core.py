@@ -72,12 +72,14 @@ def slurmify(**slurm_kwargs):
 
                 jobs = executor.map_array(fn, *arg_lists)
                 print(f"[slurmify] Submitted job array with job ids: {[job.job_id for job in jobs]}")
-                return jobs
+                results = [job.result() for job in jobs]
+                return results
 
             else:
-                job = executor.submit(fn, *args, **kwargs)
-                print(f"[slurmify] Submitted job with id {job.job_id}")
-                return job
+                jobs = [executor.submit(fn, *args, **kwargs)]
+                print(f"[slurmify] Submitted job array with job ids: {[job.job_id for job in jobs]}")
+                results = [job.result() for job in jobs]
+                return results
 
         return wrapper
     return decorator

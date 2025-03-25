@@ -103,6 +103,12 @@ for a_batch, b_batch in batch(100, list_a, list_b):
 
 # 🛡️ Notes
 ✅ If SLURM is not available (sinfo not found or no job ID in environment), the jobs run locally using submitit.LocalExecutor.
+
+### Todo: 
+1. Need to add returns from jobs
+2. Enable requeue
+
 ---
+
 # 📜 License
 MIT

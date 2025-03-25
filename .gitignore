@@ -1,5 +1,11 @@
 # logs
 test_logs/
+local_logs/
+*_logs/
+
+# ide
+.vscode/
+.idea/
 
 # Python-generated files
 __pycache__/
@@ -8,6 +14,7 @@ build/
 dist/
 wheels/
 *.egg-info
+tests/test_ml.py
 
 # Virtual environments
 .venv

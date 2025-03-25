@@ -239,3 +239,9 @@ def cross_val_score(
         return np.array(results.get(f"test_{scoring}", results.get("test_score")))
     return np.array(results["test_score"])
 
+
+class SlurmomaticSearchCV:
+    # uses optunasearchcv under the hood
+    # performs cv with slurm
+    # uses toggle for training and testing
+    ...

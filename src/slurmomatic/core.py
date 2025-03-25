@@ -63,7 +63,6 @@ def slurmify(**slurm_kwargs):
             if is_array:
                 arg_names = [k for k in bound_args.arguments if k != "use_slurm"]
                 arg_lists = [bound_args.arguments[k] for k in arg_names]
-
                 if not all(isinstance(arg, (list, tuple)) for arg in arg_lists):
                     raise ValueError("[slurmify] All inputs (except 'use_slurm') must be lists/tuples when slurm_array_parallelism is used.")
 

@@ -66,9 +66,41 @@ def _run_fold(
 
 
 @slurmify(slurm_array_parallelism=20)
-def _slurm_run_fold(**kwargs) -> Dict[str, Any]:
-    return _run_fold(**kwargs)
+def _slurm_run_fold(
+    estimator: BaseEstimator,
+    X: Any,
+    y: Any,
+    scorer: Callable,
+    train_idx: np.ndarray,
+    test_idx: np.ndarray,
+    fit_params: dict,
+    score_params: dict,
+    return_train_score: bool = False,
+    return_times: bool = False,
+    return_estimator: bool = False,
+    error_score: Union[str, float] = 0,
+    verbose: int = 0,
+) -> Dict[str, Any]:
+    
+    return _run_fold(
+        estimator=estimator,
+        X=X,
+        y=y,
+        scorer=scorer,
+        train_idx=train_idx,
+        test_idx=test_idx,
+        fit_params=fit_params,
+        score_params=score_params,
+        return_train_score=return_train_score,
+        return_times=return_times,
+        return_estimator=return_estimator,
+        error_score=error_score,
+        verbose=verbose,
+    )
 
+
+def _unpack_for_map_array(data: list[dict]) -> dict[list]:
+    return {k: [d[k] for d in data] for k in data[0]}
 
 def _submit_cv_folds(
     estimator,
@@ -106,8 +138,11 @@ def _submit_cv_folds(
             "verbose": verbose,
         })
 
-    executor = _slurm_run_fold if use_slurm else _run_fold
-    results = [executor(**kwargs) for kwargs in fold_inputs]
+    if use_slurm:
+        unpacked_array = _unpack_for_map_array(fold_inputs)
+        results = _slurm_run_fold(**unpacked_array)
+    else:
+        results = [_run_fold(**kwargs) for kwargs in fold_inputs]
 
     return results
 
@@ -121,7 +156,7 @@ def _aggregate_results(results: List[Dict[str, Any]]) -> Dict[str, List[Any]]:
     return dict(aggregated)
 
 
-def toggle_cross_validate(
+def cross_validate(
     estimator,
     X,
     y=None,
@@ -164,7 +199,7 @@ def toggle_cross_validate(
     return _aggregate_results(results)
 
 
-def toggle_cross_val_score(
+def cross_val_score(
     estimator,
     X,
     y=None,
@@ -182,7 +217,7 @@ def toggle_cross_val_score(
     """
     Custom cross_val_score version using toggle_cross_validate.
     """
-    results = toggle_cross_validate(
+    results = cross_validate(
         estimator=estimator,
         X=X,
         y=y,
@@ -204,9 +239,3 @@ def toggle_cross_val_score(
         return np.array(results.get(f"test_{scoring}", results.get("test_score")))
     return np.array(results["test_score"])
 
-
-# Alias for production
-slurm_cross_validate = toggle_cross_validate
-slurm_cross_val_score = toggle_cross_val_score
-
-# 

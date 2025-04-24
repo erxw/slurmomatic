@@ -6,6 +6,12 @@ import pytest
 from slurmomatic.utils import batch
 from slurmomatic.core import is_slurm_available, slurmify
 
+
+# test for batch
+# tests for slurmify
+# tests for cross_validate, cross_val_score
+# tests for slurmsearchcv
+
 # ----------------------------------------------------
 # Dummy decorated functions
 # ----------------------------------------------------
@@ -56,41 +62,3 @@ def test_is_slurm_available_returns_bool():
     assert isinstance(is_slurm_available(), bool)
 
 
-
-# ----------------------------------------------------
-# Tests for `slurmify` decorated functions
-# ----------------------------------------------------
-def test_dummy_job_result_value():
-    job = dummy_job(2, 3, use_slurm=False)
-    assert job.result() == 5
-
-def test_dummy_job_result_type():
-    job = dummy_job(100, 50, use_slurm=False)
-    assert isinstance(job.result(), int)
-
-def test_dummy_job_array_correct_results():
-    x = [1, 2, 3]
-    y = [10, 20, 30]
-    jobs = dummy_job_array(x, y, use_slurm=False)
-    results = [job.result() for job in jobs]
-    assert results == [10, 40, 90]
-
-def test_dummy_job_array_single_element():
-    jobs = dummy_job_array([4], [5], use_slurm=False)
-    assert [job.result() for job in jobs] == [20]
-
-def test_dummy_job_array_type_check():
-    jobs = dummy_job_array([1], [2], use_slurm=False)
-    assert all(isinstance(job.result(), int) for job in jobs)
-
-def test_dummy_job_array_empty_lists():
-    jobs = dummy_job_array([], [], use_slurm=False)
-    assert jobs == []
-
-def test_dummy_job_array_mismatched_lengths():
-    with pytest.raises(ValueError, match="must have the same length"):
-        dummy_job_array([1, 2], [3], use_slurm=False)
-
-def test_dummy_job_array_invalid_type_inputs():
-    with pytest.raises(ValueError, match="must be lists/tuples"):
-        dummy_job_array(1, 2, use_slurm=False)

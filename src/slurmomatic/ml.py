@@ -6,7 +6,6 @@ from sklearn.metrics import check_scoring
 from collections import defaultdict
 from typing import Callable, Any, Dict, List, Optional, Union, Tuple
 import time
-from scikit_toggle import toggle
 from slurmomatic.core import slurmify
 
 
@@ -26,14 +25,11 @@ def _run_fold(
     verbose: int = 0,
 ) -> Dict[str, Any]:
     estimator = clone(estimator)
-    toggle(estimator, "train")
 
     try:
         start_time = time.time()
         estimator.fit(X[train_idx], y[train_idx], **fit_params)
         fit_time = time.time() - start_time
-
-        toggle(estimator, "test")
 
         start_time = time.time()
         test_score = scorer(estimator, X[test_idx], y[test_idx], **score_params)
@@ -174,7 +170,7 @@ def cross_validate(
     use_slurm: bool = False,
 ) -> Dict[str, List[Any]]:
     """
-    Custom cross-validation with toggle support and optional SLURM parallelism.
+    Custom cross-validation with optional SLURM parallelism.
     """
     X, y, groups = indexable(X, y, groups)
     cv = check_cv(cv=cv, y=y, classifier=False)
@@ -238,10 +234,3 @@ def cross_val_score(
     if isinstance(scoring, str):
         return np.array(results.get(f"test_{scoring}", results.get("test_score")))
     return np.array(results["test_score"])
-
-
-class SlurmomaticSearchCV:
-    # uses optunasearchcv under the hood
-    # performs cv with slurm
-    # uses toggle for training and testing
-    ...

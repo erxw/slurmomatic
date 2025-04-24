@@ -1,6 +1,6 @@
 [project]
 name = "slurmomatic"
-version = "0.1.0"
+version = "0.1.1"
 description = "custom decorator to turn any function slurm-deployable. Can submit multiple jobs and multiple job_arrays"
 readme = "README.md"
 authors = [
@@ -33,6 +33,8 @@ pythonpath = "src"
 addopts = [
     "--import-mode=importlib",
 ]
+
+
 
 [tool.uv.sources]
 scikit-toggle = { path = "../scikit-toggle" }

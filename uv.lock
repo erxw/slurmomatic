@@ -389,27 +389,6 @@ wheels = [
 ]
 
 [[package]]
-name = "scikit-toggle"
-version = "0.1.0"
-source = { directory = "../scikit-toggle" }
-dependencies = [
-    { name = "numpy" },
-    { name = "scikit-learn" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "numpy", specifier = "==1.26" },
-    { name = "scikit-learn", specifier = "==1.5.2" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pdoc", specifier = ">=15.0.1" },
-    { name = "pytest", specifier = ">=8.3.5" },
-]
-
-[[package]]
 name = "scipy"
 version = "1.15.2"
 source = { registry = "https://pypi.org/simple" }
@@ -482,7 +461,6 @@ dependencies = [
     { name = "numpy" },
     { name = "optuna" },
     { name = "scikit-learn" },
-    { name = "scikit-toggle" },
     { name = "setuptools" },
     { name = "submitit" },
 ]
@@ -498,7 +476,6 @@ requires-dist = [
     { name = "numpy", specifier = "==1.26" },
     { name = "optuna", specifier = ">=4.2.1" },
     { name = "scikit-learn", specifier = "==1.5.2" },
-    { name = "scikit-toggle", directory = "../scikit-toggle" },
     { name = "setuptools", specifier = ">=78.0.1" },
     { name = "submitit", specifier = ">=1.5.2" },
 ]

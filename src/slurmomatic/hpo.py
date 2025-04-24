@@ -7,7 +7,7 @@ from sklearn.metrics import check_scoring
 from typing import Callable, Optional, Union, Dict, Any, List
 
 from slurmomatic.ml import cross_validate
-from scikit_toggle import toggle
+#from scikit_toggle import toggle
 
 
 class SlurmSearchCV:
@@ -53,7 +53,7 @@ class SlurmSearchCV:
 
         # Clone and configure estimator
         estimator = clone(self.estimator).set_params(**params)
-        toggle(estimator, "train")
+        #toggle(estimator, "train")
 
         # Run CV with SLURM or locally
         result = cross_validate(
@@ -97,7 +97,7 @@ class SlurmSearchCV:
 
         # Refit best estimator on full data
         self.best_estimator_ = clone(self.estimator).set_params(**self.best_params_)
-        toggle(self.best_estimator_, "train")
+        #toggle(self.best_estimator_, "train")
         self.best_estimator_.fit(X, y)
 
         return self
@@ -105,13 +105,13 @@ class SlurmSearchCV:
     def predict(self, X):
         if self.best_estimator_ is None:
             raise RuntimeError("Call fit() before predict().")
-        toggle(self.best_estimator_, "test")
+        #toggle(self.best_estimator_, "test")
         return self.best_estimator_.predict(X)
 
     def score(self, X, y):
         if self.best_estimator_ is None:
             raise RuntimeError("Call fit() before score().")
-        toggle(self.best_estimator_, "test")
+        #toggle(self.best_estimator_, "test")
         scorer = check_scoring(self.best_estimator_, self.scoring)
         return scorer(self.best_estimator_, X, y)
 

@@ -4,6 +4,7 @@ from functools import wraps
 from typing import Callable, Any
 
 import submitit
+import shutil
 
 
 def is_slurm_available() -> bool:
@@ -50,6 +51,7 @@ def slurmify(**slurm_kwargs):
             slurm_array_parallelism = slurm_kwargs.get("slurm_array_parallelism")
             is_array = slurm_array_parallelism is not None
             is_remote = use_slurm and is_slurm_available()
+
 
             executor_class = submitit.AutoExecutor if is_remote else submitit.LocalExecutor
             executor_label = "SLURM" if is_remote else "local"

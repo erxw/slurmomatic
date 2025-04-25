@@ -1,16 +1,30 @@
 import numpy as np
 import optuna
+import submitit
+import tempfile
+import os
 from sklearn.base import BaseEstimator, clone
 from sklearn.utils import indexable
 from sklearn.model_selection import check_cv
 from sklearn.metrics import check_scoring
 from typing import Callable, Optional, Union, Dict, Any, List
-from sklearn.base import BaseEstimator, ClassifierMixin
-
-from slurmomatic.ml import cross_validate
+from slurmomatic.core import is_slurm_available
 
 
-class SlurmSearchCV(BaseEstimator, ClassifierMixin):
+def _evaluate_fold(estimator, X, y, train_idx, test_idx, scoring, error_score):
+    try:
+        estimator.fit(X[train_idx], y[train_idx])
+        scorer = check_scoring(estimator, scoring)
+        score = scorer(estimator, X[test_idx], y[test_idx])
+        print(score)
+        return score
+    except Exception as e:
+        if error_score == 'raise':
+            raise e
+        return error_score
+
+
+class SlurmSearchCV(BaseEstimator):
     def __init__(
         self,
         estimator: BaseEstimator,
@@ -19,11 +33,10 @@ class SlurmSearchCV(BaseEstimator, ClassifierMixin):
         scoring: Optional[Union[str, Callable]] = None,
         cv: Optional[int] = 5,
         error_score: Union[str, float] = np.nan,
-        return_train_score: bool = False,
-        return_estimator: bool = False,
-        use_slurm: bool = False,
         verbose: int = 0,
         random_state: Optional[int] = None,
+        slurm_config: Optional[Dict[str, Any]] = None,
+        use_slurm: bool = True
     ):
         self.estimator = estimator
         self.param_distributions = param_distributions
@@ -31,11 +44,10 @@ class SlurmSearchCV(BaseEstimator, ClassifierMixin):
         self.scoring = scoring
         self.cv = cv
         self.error_score = error_score
-        self.return_train_score = return_train_score
-        self.return_estimator = return_estimator
-        self.use_slurm = use_slurm
         self.verbose = verbose
         self.random_state = random_state
+        self.slurm_config = slurm_config or {}
+        self.use_slurm = use_slurm
 
         self.study = optuna.create_study(
             direction="maximize",
@@ -47,56 +59,62 @@ class SlurmSearchCV(BaseEstimator, ClassifierMixin):
         self.best_params_ = None
         self.cv_results_: List[Dict[str, Any]] = []
 
-    def _objective(self, trial: optuna.Trial, X, y, groups):
-        # Sample hyperparameters
+    def _objective(self, trial: optuna.Trial, X, y):
         params = self.param_distributions(trial)
-
-        # Clone and configure estimator
         estimator = clone(self.estimator).set_params(**params)
-        # Run CV with SLURM or locally
-        result = cross_validate(
-            estimator,
-            X,
-            y=y,
-            groups=groups,
-            scoring=self.scoring,
-            cv=self.cv,
-            error_score=self.error_score,
-            return_train_score=self.return_train_score,
-            return_estimator=self.return_estimator,
-            use_slurm=self.use_slurm,
-            verbose=self.verbose,
+
+        cv = check_cv(self.cv, y, classifier=False)
+        splits = list(cv.split(X, y))
+
+        print(is_slurm_available())
+
+        executor = submitit.AutoExecutor(folder=tempfile.mkdtemp())
+
+        executor.update_parameters(
+            slurm_array_parallelism=5,  # Limit to 5 concurrent tasks
+
         )
+#        executor.update_parameters(**self.slurm_config)
+        jobs = []
 
-        # Extract mean score
-        test_key = f'test_{self.scoring}' if isinstance(self.scoring, str) else 'test_score'
-        if test_key not in result:
-            test_key = 'test_score'  # fallback if key doesn't exist
-#        test_key = f"test_{self.scoring}" if isinstance(self.scoring, str) else "test_score"
-        score = np.mean(result[test_key])
-        result["params"] = params
-        result["mean_test_score"] = score
-        self.cv_results_.append(result)
+        for train_idx, test_idx in splits:
+            jobs.append(
+                executor.submit(
+                    _evaluate_fold,
+                    estimator=clone(estimator),
+                    X=X,
+                    y=y,
+                    train_idx=train_idx,
+                    test_idx=test_idx,
+                    scoring=self.scoring,
+                    error_score=self.error_score
+                )
+            )
 
-        return score
+        scores = [job.result() for job in jobs]
+
+        mean_score = np.mean(scores)
+        self.cv_results_.append({
+            "params": params,
+            "mean_test_score": mean_score,
+            "fold_scores": scores,
+        })
+
+        return mean_score
 
     def fit(self, X, y=None, groups=None):
-        X, y, groups = indexable(X, y, groups)
-        check_cv(cv=self.cv, y=y, classifier=False)  # Validate CV
+        X, y, _ = indexable(X, y, groups)
 
         self.study.optimize(
-            lambda trial: self._objective(trial, X, y, groups),
+            lambda trial: self._objective(trial, X, y),
             n_trials=self.n_trials
         )
 
-        # Best results
         self.best_params_ = self.study.best_params
         self.best_score_ = self.study.best_value
 
-        # Refit best estimator on full data
         self.best_estimator_ = clone(self.estimator).set_params(**self.best_params_)
         self.best_estimator_.fit(X, y)
-
         return self
 
     def predict(self, X):

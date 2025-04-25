@@ -107,8 +107,6 @@ for a_batch, b_batch in batch(100, list_a, list_b):
 ### Todo: 
 1. Need to add returns from jobs
 2. Enable requeue
-3. SlurmSearchCV should run one job with multiple job arrays for each fold of CV
-4. NestedCV with jobs outer loop and job arrays inner loop
 
 ---
 

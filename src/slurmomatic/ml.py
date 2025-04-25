@@ -61,7 +61,7 @@ def _run_fold(
     return result
 
 
-@slurmify(slurm_array_parallelism=20)
+@slurmify(slurm_array_parallelism=True, timeout_min=20)
 def _slurm_run_fold(
     estimator: BaseEstimator,
     X: Any,
@@ -76,6 +76,7 @@ def _slurm_run_fold(
     return_estimator: bool = False,
     error_score: Union[str, float] = 0,
     verbose: int = 0,
+    use_slurm: bool = True
 ) -> Dict[str, Any]:
     
     return _run_fold(

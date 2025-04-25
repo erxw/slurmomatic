@@ -101,6 +101,43 @@ for a_batch, b_batch in batch(100, list_a, list_b):
 ```
 ---
 
+# nested cross validation
+```
+python
+from slurmomatic.core import slurmify
+from slurmomatic.utils import batch
+#from sklearn.model_selection import cross_val_score
+from slurmomatic.ml import cross_validate, cross_val_score
+from optuna.integration import OptunaSearchCV
+import numpy as np
+from sklearn.datasets import make_classification
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+import optuna
+
+
+X, y = make_classification(n_samples=1000, n_features=20, random_state=42)
+
+estimator = RandomForestClassifier(random_state=42)
+
+outer_cv = 5
+
+inner_cv = 3
+
+param_distributions = {
+    'n_estimators': optuna.distributions.IntDistribution( 10, 100),
+
+    'max_depth': optuna.distributions.IntDistribution(1, 10)
+}
+
+search = OptunaSearchCV(estimator, param_distributions, n_trials=100, scoring='accuracy', cv=inner_cv, random_state=42)
+scores = cross_val_score(estimator, X, y, cv=3, use_slurm=True)
+
+print(scores) 
+
+```
+
+
 # 🛡️ Notes
 ✅ If SLURM is not available (sinfo not found or no job ID in environment), the jobs run locally using submitit.LocalExecutor.
 

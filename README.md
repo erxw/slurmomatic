@@ -7,14 +7,7 @@ slurmomatic is a Python library for seamless, distributed model evaluation and h
 
 ## Installation
 ```bash
-pip install submitit scikit-learn numpy
-```
-
-Clone this repo:
-
-```bash
-git clone https://github.com/your-org/slurmomatic.git
-cd slurmomatic
+uv pip install https://github.com/erxw/slurmomatic.git
 ```
 
 ---
@@ -116,7 +109,7 @@ def my_function(x, y, use_slurm=False): ...
 ```python
 from slurmomatic import slurmify
 
-@slurmify(slurm_array_parallelism=True, timeout_min=20)
+@slurmify(slurm_array_parallelism=4, timeout_min=20)
 def train(a: int, b: int, use_slurm: bool = False):
     print(f"Training with a={a}, b={b}")
 

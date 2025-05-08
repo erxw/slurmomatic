@@ -98,8 +98,6 @@ def get_executor(folder: Path, **kwargs):
     executor.update_parameters(**kwargs)
     return executor
 
-
-
 def slurm_cross_validate(
     estimator,
     X,

@@ -2,6 +2,9 @@
 # slurmomatic
 slurmomatic is a Python library for seamless, distributed model evaluation and hyperparameter tuning using SLURM. It wraps scikit-learn-style workflows (cross_val_score, GridSearchCV, cross_val_predict, etc.) and executes them in parallel across SLURM clusters—or locally, if SLURM is unavailable. It also contains a slurmify decorator to turn any function into a slurm-deployable.
 
+---
+
+
 ## Installation
 ```bash
 pip install submitit scikit-learn numpy
@@ -14,6 +17,9 @@ git clone https://github.com/your-org/slurmomatic.git
 cd slurmomatic
 ```
 
+---
+
+
 ## Project Structure
 ```bash
 src/slurmomatic/
@@ -22,6 +28,9 @@ src/slurmomatic/
 ├── utils.py             # Helper functions (SLURM detection, decorators, etc.)
 └── __init__.py
 ```
+
+---
+
 
 ## Features
 Drop-in replacements for cross_val_score, cross_validate, cross_val_predict
@@ -33,6 +42,9 @@ SLURM-aware decorators for automatic job dispatch
 Nested cross-validation with optional randomized search
 
 Local fallback when SLURM is not available
+
+---
+
 
 ## Quick Start
 
@@ -50,6 +62,9 @@ scores = slurm_cross_val_score(clf, X, y, cv=5)
 print("SLURM CV scores:", scores)
 ```
 
+---
+
+
 ### Grid Search with SLURM
 
 ```python
@@ -62,6 +77,8 @@ search.fit(X, y)
 print("Best score:", search.best_score_)
 print("Best params:", search.best_params_)
 ```
+
+---
 
 ### Nested Cross-Validation
 
@@ -80,50 +97,98 @@ nested_scores = slurm_nested_cross_val_score(
 print("Nested CV scores:", nested_scores)
 ```
 
+---
+
 ### SLURM-aware Function Decorator
 
 #### Important Note: Add use_slurm=False in Your Function Signatures
 The slurmify decorator depends on a use_slurm keyword argument to decide whether to run via SLURM or locally. This should be present in your function signature:
 
 ```python
+from slurmomatic import slurmify, batch
 def my_function(x, y, use_slurm=False): ...
 ```
 
-#### Example 1. Running slurmify
+---
+
+#### Example 1: Submitting a SLURM Job Array
+
 ```python
-from slurmomatic.utils import slurmify
+from slurmomatic import slurmify
 
+@slurmify(slurm_array_parallelism=True, timeout_min=20)
+def train(a: int, b: int, use_slurm: bool = False):
+    print(f"Training with a={a}, b={b}")
 
-@slurmify(folder="slurm_logs")
-def train(x, y, use_slurm=False):
-    return sum(x) + sum(y)
-
-# Local run
-result = train([1, 2, 3], [4, 5], use_slurm=False)
-
-# SLURM run (if SLURM is available)
-result = train([1, 2, 3], [4, 5], use_slurm=True)
-train_model(X, y, use_slurm=True)
+# Run job array of 5 parallel job_arrays
+train([1, 2, 3, 4, 5], [10, 20, 30, 40, 50], use_slurm=True)
 ```
 
-#### Example 2. Using job array for parallel execution
-```python
-@slurmify(folder="array_logs", slurm_array_parallelism=4)
-def multiply(x, y, use_slurm=False):
-    return x * y
+---
 
-# All args (except use_slurm) must be lists of equal length
-results = multiply([1, 2, 3, 4], [10, 20, 30, 40], use_slurm=True)
+#### Example 2: Submitting Multiple Individual Jobs
+
+```python
+from slurmomatic import slurmify
+
+@slurmify(timeout_min=10)
+def run_experiment(seed: int, use_slurm: bool = False):
+    print(f"Running experiment with seed={seed}")
+
+for seed in range(5):
+    run_experiment(seed, use_slurm=True)
+```
+Each call submits its own SLURM job (or runs locally).
+
+---
+
+#### Example 3: Submitting Multiple Batches with Job Arrays
+```python
+from slurmomatic import slurmify, batch
+
+@slurmify(slurm_array_parallelism=10, timeout_min=30)
+def evaluate(x: int, y: int, use_slurm: bool = False):
+    print(f"Evaluating with x={x}, y={y}")
+    # Prepare large input lists
+
+xs = list(range(1000))
+ys = [1] * 1000
+
+# Submit in batches of 200 using job arrays
+for x_batch, y_batch in batch(200, xs, ys):
+    evaluate(x_batch, y_batch, use_slurm=True)
+```
+This submits 5 SLURM job arrays, each with 200 jobs.
+
+---
+
+### @slurmify(...) Parameters
+You can pass any SLURM submitit parameters directly to the decorator:
+```python
+@slurmify(timeout_min=30, cpus_per_task=4, gpus_per_node=1, partition="gpu")
 ```
 
-#### Example 3. Using custom slurm resources
-```python
-@slurmify(folder="gpu_jobs", cpus_per_task=8, mem_gb=32, timeout_min=120, gpus_per_node=1)
-def simulate(data, steps, use_slurm=False):
-    return f"Processed {len(data)} items for {steps} steps"
+Special key:
 
-simulate(list(range(1000)), 500, use_slurm=True)
+slurm_array_parallelism=10 → Triggers job array mode. 
+
+---
+
+### batch(batch_size: int, *args)
+Utility to chunk long input lists into mini-batches.
+```python
+from slurmomatic import batch
+
+for a_batch, b_batch in batch(100, list_a, list_b):
+    train(a_batch, b_batch, use_slurm=True)
 ```
+
+---
+
+# 🛡️ Notes
+✅ If SLURM is not available (sinfo not found or no job ID in environment), the jobs run locally using submitit.LocalExecutor.
+
+---
 
 ### Testing
 Run all unit tests using pytest:
@@ -134,12 +199,16 @@ pytest tests/
 
 All SLURM jobs are mocked during tests using unittest.mock, so they run quickly and do not require a SLURM cluster.
 
+---
+
 ### 🧠 SLURM Notes
 By default, SLURM logs are saved to ./slurm_logs/. You can change this via the folder argument in most functions or decorators.
 
 The SLURM detection logic checks for the SLURM_JOB_ID environment variable or runs sinfo to confirm availability.
 
 If SLURM is not available, it automatically falls back to submitit.LocalExecutor.
+
+---
 
 ### 📘 API Highlights
 Function/Class	Description
@@ -152,6 +221,7 @@ slurm_nested_cross_val_score	Nested CV for unbiased model evaluation
 slurm_nested_cross_validate	Nested CV returning detailed fold metrics
 slurmify	SLURM/Local decorator for standalone jobs
 
+---
 
 ### License
 MIT License

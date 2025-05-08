@@ -39,10 +39,7 @@ def _get_param_list(
 
 def get_slurm_executor(
     folder: str,
-    cpus: int = 4,
-    mem_gb: int = 16,
-    timeout_min: int = 60,
-    gpus: int = 0
+    *args, **kwargs
 ) -> submitit.AutoExecutor:
     """
     Configure a SLURM executor for job submission.
@@ -51,14 +48,6 @@ def get_slurm_executor(
     ----------
     folder : str
         Folder for SLURM logs.
-    cpus : int
-        CPUs per task.
-    mem_gb : int
-        Memory in GB.
-    timeout_min : int
-        Timeout in minutes.
-    gpus : int
-        GPUs per node.
 
     Returns
     -------
@@ -67,11 +56,8 @@ def get_slurm_executor(
     """
     executor = submitit.AutoExecutor(folder)
     executor.update_parameters(
-        timeout_min=timeout_min,
-        cpus_per_task=cpus,
-        mem_gb=mem_gb,
-        gpus_per_node=gpus,
-        slurm_partition="compute",
+        *args, 
+        **kwargs
     )
     return executor
 

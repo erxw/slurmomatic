@@ -1,221 +1,173 @@
+# SLURM Utilities for Parallel Machine Learning Workflows
 
-# slurmomatic
-slurmomatic is a Python library for seamless, distributed model evaluation and hyperparameter tuning using SLURM. It wraps scikit-learn-style workflows (cross_val_score, GridSearchCV, cross_val_predict, etc.) and executes them in parallel across SLURM clusters—or locally, if SLURM is unavailable. It also contains a slurmify decorator to turn any function into a slurm-deployable.
+This library provides a convenient interface to run Scikit-learn-compatible tasks (such as cross-validation, hyperparameter search, and job arrays) using [SLURM](https://slurm.schedmd.com/) . It can also fallback to local execution if SLURM is not available.
+
+## Features
+
+- `slurmify`: Decorator to run any function on SLURM or locally.
+- `slurm_cross_validate`: SLURM-parallelized version of `cross_validate`.
+- `slurm_cross_val_score`: SLURM-parallelized version of `cross_val_score`.
+- `SlurmGridSearchCV` & `SlurmRandomizedSearchCV`: Parallel hyperparameter search using SLURM.
+- `batch`: Utility to split inputs into consistent-size batches.
+- `is_slurm_available`: Checks if SLURM is available on the system.
 
 ---
 
-
 ## Installation
+
 ```bash
 uv pip install https://github.com/erxw/slurmomatic.git
 ```
 
----
+## Usage
 
+### @slurmify
+Wraps any function and runs it via SLURM or locally. Function must have use_slurm: bool as an argument
 
-## Project Structure
-```bash
-src/slurmomatic/
-├── core.py              # SLURM job dispatching, parallelization primitives
-├── model_selection.py   # Cross-validation and hyperparameter search utilities
-├── utils.py             # Helper functions (SLURM detection, decorators, etc.)
-└── __init__.py
+```python
+from slurm_utils import slurmify
+
+@slurmify(folder="my_logs", slurm_array_parallelism=4)
+def add(x, y, use_slurm=False):
+    return x + y
+
+results = add([1, 2, 3, 4], [10, 20, 30, 40], use_slurm=True)
+print(results)  # [11, 22, 33, 44]
 ```
 
----
-
-
-## Features
-Drop-in replacements for cross_val_score, cross_validate, cross_val_predict
-
-Parallelized GridSearchCV and RandomizedSearchCV
-
-SLURM-aware decorators for automatic job dispatch
-
-Nested cross-validation with optional randomized search
-
-Local fallback when SLURM is not available
-
----
-
-
-## Quick Start
-
-### Parallel Cross-Validation with SLURM
+### slurm_cross_validate
+SLURM-parallelized cross-validation.
 
 ```python
 from sklearn.datasets import make_classification
 from sklearn.linear_model import LogisticRegression
-from slurmomatic.model_selection import slurm_cross_val_score
+from slurm_utils import slurm_cross_validate
 
-X, y = make_classification(n_samples=1000, n_features=20)
-clf = LogisticRegression(max_iter=500)
+X, y = make_classification(n_samples=200, n_features=20)
+model = LogisticRegression()
 
-scores = slurm_cross_val_score(clf, X, y, cv=5)
-print("SLURM CV scores:", scores)
+results = slurm_cross_validate(model, X, y, cv=5, return_train_score=True)
+print(results['test_score'])
+print(results['train_score'])
 ```
 
----
-
-
-### Grid Search with SLURM
+### slurm_cross_val_score
+Simplified version of slurm_cross_validate that returns only test scores.
 
 ```python
-from slurmomatic.model_selection import SlurmGridSearchCV
+from slurm_utils import slurm_cross_val_score
 
-param_grid = {"C": [0.1, 1.0, 10.0]}
-search = SlurmGridSearchCV(clf, param_grid, cv=5)
+scores = slurm_cross_val_score(model, X, y, cv=3)
+print(scores)  # [0.91, 0.89, 0.92]
+```
+
+
+### SlurmGridSearchCV / SlurmRandomizedSearchCV
+Drop-in replacements for GridSearchCV and RandomizedSearchCV, powered by SLURM.
+
+```python
+from slurm_utils import SlurmGridSearchCV
+from sklearn.model_selection import StratifiedKFold
+from sklearn.linear_model import LogisticRegression
+
+param_grid = {'C': [0.1, 1, 10]}
+search = SlurmGridSearchCV(LogisticRegression(), param_grid, cv=StratifiedKFold(3), folder="grid_logs")
 search.fit(X, y)
 
-print("Best score:", search.best_score_)
-print("Best params:", search.best_params_)
+print(search.best_params_)
 ```
 
----
 
-### Nested Cross-Validation
+Same idea for:
 
 ```python
-from slurmomatic.model_selection import slurm_nested_cross_val_score
+from slurm_utils import SlurmRandomizedSearchCV
 
-nested_scores = slurm_nested_cross_val_score(
-    estimator=clf,
-    param_grid={"C": [0.1, 1.0]},
-    X=X,
-    y=y,
-    outer_cv=5,
-    inner_cv=3
-)
-
-print("Nested CV scores:", nested_scores)
+param_dist = {'C': [0.01, 0.1, 1, 10]}
+search = SlurmRandomizedSearchCV(LogisticRegression(), param_distributions=param_dist, n_iter=2)
+search.fit(X, y)
 ```
 
----
-
-### SLURM-aware Function Decorator
-
-#### Important Note: Add use_slurm=False in Your Function Signatures
-The slurmify decorator depends on a use_slurm keyword argument to decide whether to run via SLURM or locally. This should be present in your function signature:
+### Nested Cross Validation (outer: cross_val_score; inner: SlurmGridSearchCV)
+This uses Scikit-learn’s cross_val_score to evaluate a model after SLURM-powered grid search.
 
 ```python
-from slurmomatic import slurmify, batch
-def my_function(x, y, use_slurm=False): ...
+from sklearn.datasets import make_classification
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import cross_val_score
+from slurm_utils import SlurmGridSearchCV
+
+# Generate data
+X, y = make_classification(n_samples=200, n_features=20, random_state=42)
+
+# Use SlurmGridSearchCV to find best parameters
+param_grid = {'C': [0.1, 1, 10]}
+search = SlurmGridSearchCV(LogisticRegression(), param_grid, cv=3, folder="logs")
+
+# Use cross_val_score with search estimator
+scores = cross_val_score(search, X, y, cv=5)
+print("Cross-validation scores:", scores)
 ```
 
----
-
-#### Example 1: Submitting a SLURM Job Array
+### Nested Cross Validation (outer: slurm_cross_val_score; inner: GridSearchCV)
+This uses GridSearchCV to find hyperparameters and then evaluates the best model using SLURM-based parallel CV scoring.
 
 ```python
-from slurmomatic import slurmify
+from sklearn.datasets import make_classification
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV
+from slurm_utils import slurm_cross_val_score
 
-@slurmify(slurm_array_parallelism=4, timeout_min=20)
-def train(a: int, b: int, use_slurm: bool = False):
-    print(f"Training with a={a}, b={b}")
+# Generate data
+X, y = make_classification(n_samples=200, n_features=20, random_state=42)
 
-# Run job array of 5 parallel job_arrays
-train([1, 2, 3, 4, 5], [10, 20, 30, 40, 50], use_slurm=True)
+# Use standard GridSearchCV first
+param_grid = {'C': [0.1, 1, 10]}
+search = GridSearchCV(LogisticRegression(), param_grid, cv=3)
+
+# Evaluate best model using SLURM-based parallel scoring
+scores = slurm_cross_val_score(search, X, y, cv=5)
+print("SLURM CV scores:", scores)
+
 ```
 
----
-
-#### Example 2: Submitting Multiple Individual Jobs
+### batch
+Splits multiple input lists into batches.
 
 ```python
-from slurmomatic import slurmify
+from slurm_utils import batch
 
-@slurmify(timeout_min=10)
-def run_experiment(seed: int, use_slurm: bool = False):
-    print(f"Running experiment with seed={seed}")
+a = [1, 2, 3, 4]
+b = ['a', 'b', 'c', 'd']
 
-for seed in range(5):
-    run_experiment(seed, use_slurm=True)
+for ba, bb in batch(2, a, b):
+    print(ba, bb)
+# [1, 2] ['a', 'b']
+# [3, 4] ['c', 'd']
 ```
-Each call submits its own SLURM job (or runs locally).
 
----
+### is_slurm_available
+Returns True if SLURM is accessible on this system.
 
-#### Example 3: Submitting Multiple Batches with Job Arrays
 ```python
-from slurmomatic import slurmify, batch
+from slurm_utils import is_slurm_available
 
-@slurmify(slurm_array_parallelism=10, timeout_min=30)
-def evaluate(x: int, y: int, use_slurm: bool = False):
-    print(f"Evaluating with x={x}, y={y}")
-    # Prepare large input lists
-
-xs = list(range(1000))
-ys = [1] * 1000
-
-# Submit in batches of 200 using job arrays
-for x_batch, y_batch in batch(200, xs, ys):
-    evaluate(x_batch, y_batch, use_slurm=True)
-```
-This submits 5 SLURM job arrays, each with 200 jobs.
-
----
-
-### @slurmify(...) Parameters
-You can pass any SLURM submitit parameters directly to the decorator:
-```python
-@slurmify(timeout_min=30, cpus_per_task=4, gpus_per_node=1, partition="gpu")
+print("SLURM detected?" , is_slurm_available())
 ```
 
-Special key:
+## Notes
+If SLURM is not available, all execution defaults to submitit.LocalExecutor.
 
-slurm_array_parallelism=10 → Triggers job array mode. 
+SLURM logs will be stored in the folder specified (e.g., slurm_logs, grid_logs).
 
----
-
-### batch(batch_size: int, *args)
-Utility to chunk long input lists into mini-batches.
-```python
-from slurmomatic import batch
-
-for a_batch, b_batch in batch(100, list_a, list_b):
-    train(a_batch, b_batch, use_slurm=True)
-```
-
----
-
-# 🛡️ Notes
-✅ If SLURM is not available (sinfo not found or no job ID in environment), the jobs run locally using submitit.LocalExecutor.
-
----
-
-### Testing
-Run all unit tests using pytest:
+## Testing
+Run all tests using pytest:
 
 ```bash
 pytest tests/
 ```
 
-All SLURM jobs are mocked during tests using unittest.mock, so they run quickly and do not require a SLURM cluster.
-
----
-
-### 🧠 SLURM Notes
-By default, SLURM logs are saved to ./slurm_logs/. You can change this via the folder argument in most functions or decorators.
-
-The SLURM detection logic checks for the SLURM_JOB_ID environment variable or runs sinfo to confirm availability.
-
-If SLURM is not available, it automatically falls back to submitit.LocalExecutor.
-
----
-
-### 📘 API Highlights
-Function/Class	Description
-slurm_cross_val_score	Parallelized cross_val_score
-slurm_cross_validate	Parallelized cross_validate
-slurm_cross_val_predict	Parallelized cross_val_predict
-SlurmGridSearchCV	SLURM version of GridSearchCV
-SlurmRandomizedSearchCV	SLURM version of RandomizedSearchCV
-slurm_nested_cross_val_score	Nested CV for unbiased model evaluation
-slurm_nested_cross_validate	Nested CV returning detailed fold metrics
-slurmify	SLURM/Local decorator for standalone jobs
-
----
-
-### License
+## License
 MIT License
+
 

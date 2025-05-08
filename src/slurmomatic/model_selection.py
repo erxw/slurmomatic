@@ -85,8 +85,21 @@ def dispatch_jobs(
     List[Any]
         List of job results.
     """
-    jobs = [executor.submit(func, *args) for args in args_list]
-    return [job.result() for job in jobs]
+    print(f"[dispatch_jobs] Submitting {len(args_list)} job(s)...")
+    jobs = []
+    for i, args in enumerate(args_list):
+        job = executor.submit(func, *args)
+        print(f"[dispatch_jobs] Submitted job {i + 1}/{len(args_list)} with args: {args}")
+        jobs.append(job)
+
+    results = []
+    for i, job in enumerate(jobs):
+        result = job.result()
+        print(f"[dispatch_jobs] Job {i + 1}/{len(jobs)} completed.")
+        results.append(result)
+
+    print(f"[dispatch_jobs] All {len(results)} job(s) finished.")
+    return results
 
 ### SLURM cross_val_score wrapper
 def slurm_cross_val_score(

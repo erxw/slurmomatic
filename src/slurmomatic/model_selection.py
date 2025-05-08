@@ -18,6 +18,7 @@ from sklearn.model_selection import (
 )
 from sklearn.pipeline import Pipeline
 from sklearn.utils import indexable
+import pandas as pd
 from .core import is_slurm_available
 
 
@@ -156,12 +157,24 @@ def slurm_cross_validate(
     splits = list(cv.split(X, y, groups))
 
     def _job(train_idx, test_idx):
+        if isinstance(X, pd.DataFrame):
+            X_train = X.iloc[train_idx]
+            X_test = X.iloc[test_idx]
+        else:
+            X_train = X[train_idx]
+            X_test = X[test_idx]
+        if isinstance(y, pd.Series):
+            y_train = y.iloc[train_idx]
+            y_test = y.iloc[test_idx]
+        else:
+            y_train = y[train_idx]
+            y_test = y[test_idx]
         return _fit_and_score(
             estimator,
-            X[train_idx],
-            y[train_idx],
-            X[test_idx],
-            y[test_idx],
+            X_train,
+            y_train,
+            X_test,
+            y_test,
             scorer,
             fit_params,
             return_train_score=return_train_score,

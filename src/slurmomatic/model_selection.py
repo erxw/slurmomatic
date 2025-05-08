@@ -219,6 +219,7 @@ class BaseSlurmSearchCV(BaseEstimator):
         scoring=None,
         cv=5,
         executor: Optional[submitit.Executor] = None,
+        random_state: Optional[int] = None
     ):
         self.estimator = estimator
         self.param_list = param_list
@@ -226,9 +227,12 @@ class BaseSlurmSearchCV(BaseEstimator):
         self.cv = cv
         self.executor = executor or submitit.AutoExecutor("slurm_logs")
         self.executor.update_parameters(timeout_min=60)
+        self.random_state = random_state
 
     def _evaluate_params(self, X, y):
         def score_params(params):
+            if self.random_state is not None:
+                np.random.seed(self.random_state)
             est = clone(self.estimator).set_params(**params)
             scores = cross_val_score(est, X, y, cv=self.cv, scoring=self.scoring)
             return {
@@ -282,4 +286,4 @@ class SlurmRandomizedSearchCV(BaseSlurmSearchCV):
         self.param_distributions = param_distributions  # store for introspection
         self.n_iter = n_iter
         param_list = list(ParameterSampler(param_distributions, n_iter=n_iter, random_state=random_state))
-        super().__init__(estimator, param_list, scoring=scoring, cv=cv, executor=executor, **kwargs)
+        super().__init__(estimator, param_list, scoring=scoring, cv=cv, executor=executor, random_state = random_state, **kwargs)
